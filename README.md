@@ -31,21 +31,21 @@
 
 ### Interface
 ##### `./submitter -n <IP>:<PORT> -u <ID> -k <PW> <FILE>`
-- [IP]  : IP of instagrapd
-- <PORT>: PORT of instagrapd
-- <ID>  : Student ID (8 digit number) (e.g., 21400802)
-- <PW>  : password (8 digit alphanumeric string) (e.g.,abcd1234)
-- <FILE>: C source
+- [IP]   IP of instagrapd
+- [PORT] PORT of instagrapd
+- [ID]   Student ID (8 digit number) (e.g., 21400802)
+- [PW]   password (8 digit alphanumeric string) (e.g.,abcd1234)
+- [FILE] C source
 - Behaviors
   - connects to __instagrapd__ in TCP
   - requests for evaluating a C source to __instagrapd__
   - frequently connects with __instagrapd__ to receive the results
   - once received, print result on stdout
 ##### `./intagrapd -p <PORT> -w <IP>:<WPORT> <DIR>`
-- <PORT>: PORT for listening
-- <IP>  : IP address for listening
-- <WPORT>: PORT of worker
-- <DIR>: path to testcase directory
+- [PORT] PORT for listening
+- [IP]   IP address for listening
+- [WPORT]PORT of worker
+- [DIR] path to testcase directory
 - Testcase
   - testcase directory contains 20 files whose name are 1.in, 1.out, 2.in, 2.out, ..., 10.in, and 10.out
   - __n.in__ is a test input and __n.out__ is the expected output
@@ -55,6 +55,6 @@
   - rejects connection if it give wrong password __(different from the one that is given at the submission)__
   - Once all testing is done, instagrapd return number of test cases that C source passes to __submitter__; or, send back the build failure message
 ##### `./worker -p <PORT>`
-- <PORT> : listening port
+- [PORT]  listening port
 - Behaviors
   -  test

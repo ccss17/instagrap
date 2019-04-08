@@ -17,6 +17,7 @@
 
 #define FILE_SIZE_INDICATOR 4
 #define BUF_SIZE 512
+#define OUTPUT_BUF BUF_SIZE * 10
 #define TARGET_FILE "target.c"
 #define TESTCASE_FILE "test.in"
 #define OUTPUT_FILE "a.out"
@@ -34,5 +35,6 @@ sock_set * init_accept_socket(int argc, char * argv[]) ;
 void cleanup_socket(sock_set * sc_sd) ;
 int file_exists(const char * filename) ;
 void receive_csrc_testcase(int argc, char * argv[]) ;
+char * execute_get_output(const char * cmd) ;
 
 #endif

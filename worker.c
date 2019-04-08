@@ -1,23 +1,14 @@
 #include "util_worker.h"
 
-#define DEBUG 0
-#if DEBUG
-#define DPRINT(func) func
-#else
-#define DPRINT(func)
-#endif
-
-
-//
-// TEST FUNCTION
-//
-
 void TEST_build_target_file() {
     if ( ! file_exists(TARGET_FILE)) {
         error_handling("TARGET FILE doesn't exists");
     }
+    if ( ! file_exists(TESTCASE_FILE)) {
+        error_handling("TESTCASE FILE doesn't exists");
+    }
     FILE * fp;
-    char path[BUF_SIZE];
+    char output[BUF_SIZE];
     char cmd[BUF_SIZE];
 
     strcpy(cmd, "gcc");
@@ -26,23 +17,25 @@ void TEST_build_target_file() {
     strcat(cmd, " ");
     strcat(cmd, "2>&1");
 
-    fp = popen(cmd, "r");
-    if (fp == NULL) {
-        error_handling ("Failed to run command");
-        exit(1);
-    }
-    while (fgets(path, sizeof(path)-1, fp) != NULL) {
-        /*printf("%s", path);*/
-    }
-    pclose(fp);
+    char * output_1 = execute_get_output(cmd);
 
     if (file_exists(OUTPUT_FILE)) {
         printf("build success\n");
+        strcpy(cmd, "./a.out");
+
+        char * output_2 = execute_get_output(cmd);
+        printf("%s\n", output_2);
+
         remove(OUTPUT_FILE);
+        free(output_2);
     }
     else
         printf("build fail\n");
+
+    remove(TARGET_FILE);
+    remove(TESTCASE_FILE);
 }
+
 
 //
 // MAIN
@@ -51,7 +44,14 @@ void TEST_build_target_file() {
 int main(int argc, char *argv[])
 {
     receive_csrc_testcase(argc, argv);
-    /*TEST_build_target_file() ;*/
+    // TODO
+    // timer should calculate execution time to test target program execution time exceeds 3 secs.
+    // IF build success, execute success => return output to socket
+    // IF build success, execute fail => return failure message to socket
+    //              RUN TIME ERROR
+    //              TIME EXCEED ERROR
+    // IF build fail => return failure message to socket
+    TEST_build_target_file() ;
 
     return 0;
 }

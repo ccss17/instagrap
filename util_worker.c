@@ -1,6 +1,17 @@
 #include "util_worker.h"
+
 //
-// IMPLEMENT UTIL FUNCTION
+// ERROR MESSAGE
+//
+
+void error_handling(char *message) {
+    fputs(message, stderr);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+//
+// SOCKET RELATED
 //
 
 void receive_csrc_testcase(int argc, char * argv[]) {
@@ -14,15 +25,6 @@ void receive_csrc_testcase(int argc, char * argv[]) {
 
     // CLEAN UP
     cleanup_socket(sc_sd);
-}
-
-int file_exists(const char * filename) {
-    FILE * file;
-    if (file = fopen(filename, "r")){
-        fclose(file);
-        return 1;
-    }
-    return 0;
 }
 
 void cleanup_socket(sock_set * sc_sd) {
@@ -66,6 +68,44 @@ sock_set * init_accept_socket(int argc, char * argv[]) {
     return sc_sd;
 }
 
+//
+// EXECUTE PROGRAM
+//
+
+char * execute_get_output(const char * cmd) {
+    FILE * fp;
+    char output[BUF_SIZE];
+    char * result = (char *) malloc (OUTPUT_BUF);
+
+    fp = popen(cmd, "r");
+    if (fp == NULL) {
+        error_handling ("Failed to run command");
+        exit(1);
+    }
+
+    fgets(output, sizeof(output)-1, fp);
+    strcpy(result, output);
+    while (fgets(output, sizeof(output)-1, fp) != NULL) {
+        strcat(result, output);
+    }
+    pclose(fp);
+
+    return result;
+}
+
+//
+// FILE RELATED
+//
+
+int file_exists(const char * filename) {
+    FILE * file;
+    if (file = fopen(filename, "r")){
+        fclose(file);
+        return 1;
+    }
+    return 0;
+}
+
 int get_file_size(int clnt_sd) {
     char buf[FILE_SIZE_INDICATOR];
     read(clnt_sd, buf, FILE_SIZE_INDICATOR );
@@ -99,11 +139,4 @@ void _save_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) {
     read_cnt=read(clnt_sd, buf, size );
     DPRINT(printf("buf : %s\n", buf));
     fwrite((void*)buf, 1, read_cnt, fp);
-}
-
-void error_handling(char *message)
-{
-    fputs(message, stderr);
-    fputc('\n', stderr);
-    exit(1);
 }

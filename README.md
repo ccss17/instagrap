@@ -31,7 +31,7 @@
 
 ### Interface
 ##### `./submitter -n <IP>:<PORT> -u <ID> -k <PW> <FILE>`
-- <IP>  : IP of instagrapd
+- [IP]  : IP of instagrapd
 - <PORT>: PORT of instagrapd
 - <ID>  : Student ID (8 digit number) (e.g., 21400802)
 - <PW>  : password (8 digit alphanumeric string) (e.g.,abcd1234)

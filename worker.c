@@ -17,6 +17,7 @@ IF build success, execute success => return output to socket
 IF build success, execute fail => return failure message to socket
              RUN TIME ERROR
              TIME EXCEED ERROR
+                refer: httpe://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.3.0/com.ibm.zos.v2r3.bpxbd00/rttims.htm
 IF build fail => return failure message to socket
 */
 

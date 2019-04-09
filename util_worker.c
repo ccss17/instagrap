@@ -69,31 +69,6 @@ sock_set * init_accept_socket(int argc, char * argv[]) {
 }
 
 //
-// EXECUTE PROGRAM
-//
-
-char * execute_get_output(const char * cmd) {
-    FILE * fp;
-    char output[BUF_SIZE];
-    char * result = (char *) malloc (OUTPUT_BUF);
-
-    fp = popen(cmd, "r");
-    if (fp == NULL) {
-        error_handling ("Failed to run command");
-        exit(1);
-    }
-
-    fgets(output, sizeof(output)-1, fp);
-    strcpy(result, output);
-    while (fgets(output, sizeof(output)-1, fp) != NULL) {
-        strcat(result, output);
-    }
-    pclose(fp);
-
-    return result;
-}
-
-//
 // FILE RELATED
 //
 
@@ -147,7 +122,7 @@ void _save_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) {
 
 
 pid_t 
-opencmd(int * pipes, char ** args)
+_execute(int * pipes, char ** args)
 {
     int status, in[2], out[2], err[2], check_runtimerror[2];
     pid_t pid;
@@ -244,7 +219,7 @@ char ** execute_get_result(char * args[]){
     int pipes[4];
 
     result = (char **) malloc(sizeof(char *) * 3);
-    pid_t test = opencmd(pipes, args);
+    pid_t test = _execute(pipes, args);
 
     result[0] = read_from_pipe(pipes[1], 0);
     result[1] = read_from_pipe(pipes[2], 0); 

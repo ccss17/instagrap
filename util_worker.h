@@ -19,9 +19,11 @@
 #define FILE_SIZE_INDICATOR 4
 #define BUF_SIZE 512
 #define OUTPUT_BUF BUF_SIZE * 10
+
 #define TARGET_FILE "target.c"
 #define TESTCASE_FILE "test.in"
-#define OUTPUT_FILE "a.out"
+#define OUTPUT_FILE "./a.out"
+#define COMPILER "/usr/bin/gcc"
 
 typedef struct {
     int serv_sd;
@@ -40,7 +42,7 @@ char * execute_get_output(const char * cmd) ;
 int 
 closecmd(const pid_t pid, int *pipes);
 char ** execute_get_result(char * args[]);
-pid_t opencmd(int * pipes, char ** args);
+pid_t _execute(int * pipes, char ** args);
 char * read_from_pipe(int pfd, int flag) ;
 
 #endif

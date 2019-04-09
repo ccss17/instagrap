@@ -1,3 +1,4 @@
 target.c
 out/
 *.in
+.vscode

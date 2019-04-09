@@ -140,3 +140,113 @@ void _save_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) {
     DPRINT(printf("buf : %s\n", buf));
     fwrite((void*)buf, 1, read_cnt, fp);
 }
+
+//
+// HANDLING STDIN, STDOUT, STDERR
+//
+
+
+pid_t 
+opencmd(int * pipes, char ** args)
+{
+    int status, in[2], out[2], err[2], check_runtimerror[2];
+    pid_t pid, status_pid;
+
+    if (pipe(in) || pipe(out) || pipe(err) || pipe(check_runtimerror))
+        return -1;
+
+    pid = fork();
+    if (pid < 0) {
+        close(err[0]);
+        close(err[1]);
+        close(out[0]);
+        close(out[1]);
+        close(in[0]);
+        close(in[1]);
+        return -1;
+    } else if ( pid > 0 ) {
+
+        close(in[0]);  
+        close(out[1]);
+        close(err[1]); 
+
+        pipes[0] = in[1]; 
+        pipes[1] = out[0];
+        pipes[2] = err[0];
+
+        /*dup2(check_runtimerror[1], 1); */
+        /*pipes[3] = check_runtimerror[0];*/
+
+        status_pid = wait(&status);
+        printf("Child exited :%d\n", WIFEXITED(status));
+        printf("Child exited :%d\n", WEXITSTATUS(status));
+        return pid;
+    } else {
+        close(in[1]);
+        close(out[0]);
+        close(err[0]);
+
+        dup2(in[0], 0);  
+        dup2(out[1], 1); 
+        dup2(err[1], 2); 
+        printf("EXECV RETURN: %d\n", execv(args[0], args)); 
+        return -1; 
+    }
+}
+
+int 
+closecmd(const pid_t pid, int *pipes)
+{
+    int status;
+
+    close(pipes[0]);
+    close(pipes[1]);
+    close(pipes[2]);
+    waitpid(pid, &status, 0);
+    return status;
+}
+
+//
+// PIPE RELATED
+//
+
+char *
+read_from_pipe(int pfd) {
+    int result;
+    char buf[BUF_SIZE];
+    char * data = (char *) malloc(BUF_SIZE * 5);
+
+
+    result = read(pfd, data, BUF_SIZE);
+
+    for(;;){
+        result = read(pfd, buf, BUF_SIZE);
+        if (result == -1) {
+            error_handling("read error");
+            return NULL;
+        } else if ( result == 0) {
+            break;
+        } else {
+            strcat(data, buf);
+        }
+    }
+    return data;
+}
+
+//
+// EXECUTE PROGRAM AND GET STDOUT, STDERR
+//
+char ** execute_get_result(char * args[]){
+    char ** result;
+    int pipes[4];
+
+    result = (char **) malloc(sizeof(char *) * 3);
+    pid_t test = opencmd(pipes, args);
+    /*printf("pid_t : %d\n", test);*/
+
+    result[0] = read_from_pipe(pipes[1]);
+    result[1] = read_from_pipe(pipes[2]); 
+    /*result[2] = read_from_pipe(pipes[3]); */
+
+    return result;
+}

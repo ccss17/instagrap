@@ -36,5 +36,10 @@ void cleanup_socket(sock_set * sc_sd) ;
 int file_exists(const char * filename) ;
 void receive_csrc_testcase(int argc, char * argv[]) ;
 char * execute_get_output(const char * cmd) ;
+int 
+closecmd(const pid_t pid, int *pipes);
+char * read_from_pipe(int pfd) ;
+char ** execute_get_result(char * args[]);
+pid_t opencmd(int * pipes, char ** args);
 
 #endif

@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #define DEBUG 0
 #if DEBUG
@@ -38,8 +39,8 @@ void receive_csrc_testcase(int argc, char * argv[]) ;
 char * execute_get_output(const char * cmd) ;
 int 
 closecmd(const pid_t pid, int *pipes);
-char * read_from_pipe(int pfd) ;
 char ** execute_get_result(char * args[]);
 pid_t opencmd(int * pipes, char ** args);
+char * read_from_pipe(int pfd, int flag) ;
 
 #endif

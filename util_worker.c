@@ -150,7 +150,7 @@ pid_t
 opencmd(int * pipes, char ** args)
 {
     int status, in[2], out[2], err[2], check_runtimerror[2];
-    pid_t pid, status_pid;
+    pid_t pid;
 
     if (pipe(in) || pipe(out) || pipe(err) || pipe(check_runtimerror))
         return -1;
@@ -164,7 +164,9 @@ opencmd(int * pipes, char ** args)
         close(in[0]);
         close(in[1]);
         return -1;
+
     } else if ( pid > 0 ) {
+        waitpid(pid, &status, 0);
 
         close(in[0]);  
         close(out[1]);
@@ -173,24 +175,25 @@ opencmd(int * pipes, char ** args)
         pipes[0] = in[1]; 
         pipes[1] = out[0];
         pipes[2] = err[0];
+        pipes[3] = check_runtimerror[0];
 
-        /*dup2(check_runtimerror[1], 1); */
-        /*pipes[3] = check_runtimerror[0];*/
-
-        status_pid = wait(&status);
-        printf("Child exited :%d\n", WIFEXITED(status));
-        printf("Child exited :%d\n", WEXITSTATUS(status));
         return pid;
     } else {
-        close(in[1]);
-        close(out[0]);
-        close(err[0]);
+        if ((pid = fork()) == 0) {
+            close(in[1]);
+            close(out[0]);
+            close(err[0]);
 
-        dup2(in[0], 0);  
-        dup2(out[1], 1); 
-        dup2(err[1], 2); 
-        printf("EXECV RETURN: %d\n", execv(args[0], args)); 
-        return -1; 
+            dup2(in[0], 0);  
+            dup2(out[1], 1); 
+            dup2(err[1], 2); 
+            execv(args[0], args); 
+        } else {
+            wait(&status);
+            dup2(check_runtimerror[1], 1); 
+            printf("%d", WIFEXITED(status));
+            exit(0);
+        }
     }
 }
 
@@ -211,13 +214,13 @@ closecmd(const pid_t pid, int *pipes)
 //
 
 char *
-read_from_pipe(int pfd) {
+read_from_pipe(int pfd, int check_runtimerror) {
     int result;
     char buf[BUF_SIZE];
     char * data = (char *) malloc(BUF_SIZE * 5);
 
-
     result = read(pfd, data, BUF_SIZE);
+    if (check_runtimerror) return data;
 
     for(;;){
         result = read(pfd, buf, BUF_SIZE);
@@ -242,11 +245,10 @@ char ** execute_get_result(char * args[]){
 
     result = (char **) malloc(sizeof(char *) * 3);
     pid_t test = opencmd(pipes, args);
-    /*printf("pid_t : %d\n", test);*/
 
-    result[0] = read_from_pipe(pipes[1]);
-    result[1] = read_from_pipe(pipes[2]); 
-    /*result[2] = read_from_pipe(pipes[3]); */
+    result[0] = read_from_pipe(pipes[1], 0);
+    result[1] = read_from_pipe(pipes[2], 0); 
+    result[2] = read_from_pipe(pipes[3], 1); 
 
     return result;
 }

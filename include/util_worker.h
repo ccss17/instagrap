@@ -14,6 +14,7 @@
 #define FILE_SIZE_INDICATOR 4
 #define BUF_SIZE 512
 #define OUTPUT_BUF BUF_SIZE * 10
+#define PIPE_COUNT 4
 
 #define TARGET_FILE "target.c"
 #define TESTCASE_FILE "test.in"
@@ -34,8 +35,7 @@ void cleanup_socket(sock_set * sc_sd) ;
 int file_exists(const char * filename) ;
 void receive_csrc_testcase(int argc, char * argv[]) ;
 char * execute_get_output(const char * cmd) ;
-int 
-closecmd(const pid_t pid, int *pipes);
+int closecmd(const pid_t pid, int *pipes);
 char ** execute_get_result(char * args[]);
 pid_t _execute(int * pipes, char ** args);
 char * read_from_pipe(int pfd, int flag) ;

@@ -3,4 +3,6 @@ out/
 *.in
 .vscode
 *.out
+*.a
+*.o
 maketest/

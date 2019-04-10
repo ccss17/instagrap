@@ -2,7 +2,7 @@
 
 #include "util_worker.h"
 
-char * verify_result(char ** result) {
+char ** verify_result(char ** result) {
     DPRINT(printf("STDERR: %s\n", result[1]));
     DPRINT(printf("RUNTIMEERROR: %d\n", atoi(result[2])));
     DPRINT(printf("STDOUTlen: %ld\n", strlen(result[0])));
@@ -10,7 +10,7 @@ char * verify_result(char ** result) {
     if (atoi(result[2]) == 0 || strlen(result[1]) > 0)
         return NULL;
     else
-        return result[0];
+        return result;
 }
 
 /* TODO
@@ -37,10 +37,12 @@ void build_target() {
         result = execute_get_result(CMD_EXECUTE_TARGET);
         if (verify_result(result) == NULL) {
             /* RUNTIME ERROR */
+            fputs("RUNTIME ERROR", stderr);
         } else {
             /* PROGRAM EXIT NORMALLY
              * RETURN OUTPUT TO INSTAGRAPD
              */
+            printf("result: %s\n", result[0]);
         }
         remove(OUTPUT_FILE);
     } else {

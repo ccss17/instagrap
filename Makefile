@@ -2,8 +2,14 @@ override CFLAGS += -g -ggdb
 CC = gcc
 OUTPUT = out/worker
 
-all: worker.c
-	$(CC) $? -o $(OUTPUT) $(CFLAGS)
+all: lib/libworker.a worker 
+
+lib/libworker.a: lib/libworker.c
+	make -C lib
+	
+worker: worker.c 
+	$(CC) $? -o $(OUTPUT) $(CFLAGS) -Iinclude -Llib -lworker
+
 clean:
 	rm $(OUTPUT)
-#gcc -o out/worker worker.c libworker/util_worker.c -g -ggdb -Ilibworker
+	make clean -C lib

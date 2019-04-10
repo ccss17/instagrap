@@ -23,12 +23,13 @@ def test():
 
 void main(){
     puts("this is C source code");
-    puts("this is C source code");
-    puts("this is C source code");
-    puts("this is C source code");
-    puts("this is C source code");
-    puts("this is C source code");
-    puts("this is C source code");
+    // invoke address error
+    int * p = 0;
+    * p = 10;
+    // invoke infinite loop overflow
+    main();
+    // invoke zero division error
+    printf("%d\n", 7 / 0);
 }'''
     test_case = '''\
 10 20 30

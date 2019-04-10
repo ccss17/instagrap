@@ -223,11 +223,14 @@ read_from_pipe(int pfd, int check_runtimerror) {
 //
 char ** execute_get_result(char * args[]){
     char ** result;
-    int pipes[4];
+    int pipes[PIPE_COUNT];
 
-    result = (char **) malloc(sizeof(char *) * 3);
+    result = (char **) malloc(sizeof(char *) * PIPE_COUNT - 1);
     pid_t test = _execute(pipes, args);
 
+    // result[0] -> stdout of child child process (actually execute program)
+    // result[1] -> stderr of child child process
+    // result[2] -> stdout of child process (check exit status of child child process)
     result[0] = read_from_pipe(pipes[1], 0);
     result[1] = read_from_pipe(pipes[2], 0); 
     result[2] = read_from_pipe(pipes[3], 1); 

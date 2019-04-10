@@ -1,6 +1,7 @@
 override CFLAGS += -g -ggdb
 CC = gcc
-OUTPUT = out/worker
+BIN = bin
+OUTPUT = $(BIN)/worker
 
 all: lib/libworker.a worker 
 

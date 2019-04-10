@@ -1,8 +1,9 @@
 target.c
-out/
+bin/
 *.in
 .vscode
 *.out
 *.a
 *.o
 maketest/
+forktest/

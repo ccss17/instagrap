@@ -5,7 +5,13 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
-#include "util_worker.h"
+#include "worker.h"
+
+volatile int flag_timeout = 0;
+volatile int flag_child_done = 0;
+
+void child_handler(int sig) { flag_child_done = 1; }
+void alarm_handler(int sig) { flag_timeout = 1; }
 
 //
 // ERROR MESSAGE
@@ -18,21 +24,8 @@ void error_handling(char *message) {
 }
 
 //
-// SOCKET RELATED
+// GET FILE
 //
-
-void receive_csrc_testcase(int argc, char * argv[]) {
-    // INIT
-    sock_set * sc_sd;
-    sc_sd=init_accept_socket(argc, argv);
-
-    // FUNCTION
-    get_save_file(TARGET_FILE, sc_sd->clnt_sd);
-    get_save_file(TESTCASE_FILE, sc_sd->clnt_sd);
-
-    // CLEAN UP
-    cleanup_socket(sc_sd);
-}
 
 void cleanup_socket(sock_set * sc_sd) {
     shutdown(sc_sd->clnt_sd, SHUT_WR); 
@@ -40,7 +33,7 @@ void cleanup_socket(sock_set * sc_sd) {
     close(sc_sd->serv_sd);
 }
 
-sock_set * init_accept_socket(int argc, char * argv[]) {
+sock_set * init_sock(int argc, char * argv[]) {
     sock_set * sc_sd;
     int serv_sd, clnt_sd;
     char buf[BUF_SIZE];
@@ -75,61 +68,123 @@ sock_set * init_accept_socket(int argc, char * argv[]) {
     return sc_sd;
 }
 
-//
-// FILE RELATED
-//
-
-int file_exists(const char * filename) {
-    FILE * file;
-    if (file = fopen(filename, "r")){
-        fclose(file);
-        return 1;
-    }
-    return 0;
-}
-
-int get_file_size(int clnt_sd) {
+int _get_size(int clnt_sd) {
     char buf[FILE_SIZE_INDICATOR];
     read(clnt_sd, buf, FILE_SIZE_INDICATOR );
     return atoi(buf);
 }
 
-void get_save_file(const char * filename, int clnt_sd ){
+void get_file(const char * filename, int clnt_sd ){
     FILE * fp;
     char buf[BUF_SIZE];
     int read_cnt;
     int file_size;
 
     fp = fopen(filename, "wb");
-    file_size = get_file_size(clnt_sd);
+    file_size = _get_size(clnt_sd);
     DPRINT(printf("file size : %d\n", file_size));
 
     while(1){
         if (file_size < BUF_SIZE) {
-            _save_file(fp, clnt_sd, buf, file_size, read_cnt);
+            _get_file(fp, clnt_sd, buf, file_size, read_cnt);
             break;
         } else {
             file_size -= BUF_SIZE;
-            _save_file(fp, clnt_sd, buf, BUF_SIZE, read_cnt);
+            _get_file(fp, clnt_sd, buf, BUF_SIZE, read_cnt);
         }
     }
 
     fclose(fp);
 }
 
-void _save_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) {
+void _get_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) {
     read_cnt=read(clnt_sd, buf, size );
     DPRINT(printf("buf : %s\n", buf));
     fwrite((void*)buf, 1, read_cnt, fp);
 }
 
 //
-// HANDLING STDIN, STDOUT, STDERR
+// FORK CHILD PROCESS 
 //
 
+int is_exists(char * fname) {
+    if( access( fname, F_OK) != -1 ) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
 
-pid_t 
-_execute(int * pipes, char ** args)
+char * build_target() {
+    /*
+    return "0..." program exit normally
+    return "1" failed build
+    return "2" runtime error
+    return "3" timeout error
+    */
+    int flag; // 0 : PROGRAM NORMALLY EXIT, -1 : PROGRAM ERROR, -2 : TIMEOUT ERROR
+    int build_success;
+    char ** result;
+    char * feedback;
+    char * CMD_BUILD[] = {
+        COMPILER, TARGET_FILE, 
+        "-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", NULL
+    };
+    char * CMD_EXECUTE_TARGET[] = { OUTPUT_FILE, NULL };
+
+    result = _execute(CMD_BUILD);
+    feedback = (char *) malloc(sizeof(char));
+    
+    build_success = is_exists(OUTPUT_FILE);
+
+    if (build_success){
+        // BUILD SUCCESS
+        result = _execute(CMD_EXECUTE_TARGET);
+        flag = verify_result(result);
+        if (flag == -1) {
+            /* RUNTIME ERROR */
+            strcpy(feedback, "2");
+        } else if (flag == -2){
+            /* TIMEOUT ERROR */
+            strcpy(feedback, "3");
+        }
+        else {
+            /* PROGRAM EXIT NORMALLY
+             * RETURN OUTPUT TO INSTAGRAPD
+             */
+            free(feedback);
+            feedback = (char *) malloc(sizeof(char) * strlen(result[0]) + 1);
+            strcpy(feedback, "0");
+            strcat(feedback, result[0]);
+        }
+        remove(OUTPUT_FILE);
+    } else {
+        // BUILD FAIL
+        strcpy(feedback, "1");
+    }
+    remove(TARGET_FILE);
+    remove(TESTCASE_FILE);
+    return feedback;
+}
+
+char ** _execute(char * args[]){
+    char ** result;
+    int pipes[PIPE_COUNT];
+
+    result = (char **) malloc(sizeof(char *) * PIPE_COUNT - 1);
+    _fork_subprocess(pipes, args);
+
+    // result[0] -> stdout of child child process (actually execute program)
+    // result[1] -> stderr of child child process
+    // result[2] -> stdout of child process (check exit status of child child process)
+    result[0] = _read_pipe(pipes[1], 0);
+    result[1] = _read_pipe(pipes[2], 0); 
+    result[2] = _read_pipe(pipes[3], 1); 
+
+    return result;
+}
+
+pid_t _fork_subprocess(int * pipes, char ** args)
 {
     int status, in[2], out[2], err[2], check_runtimerror[2];
     pid_t pid;
@@ -148,7 +203,8 @@ _execute(int * pipes, char ** args)
         return -1;
 
     } else if ( pid > 0 ) {
-        waitpid(pid, &status, 0);
+        // PARENT
+        wait(NULL);
 
         close(in[0]);  
         close(out[1]);
@@ -162,6 +218,7 @@ _execute(int * pipes, char ** args)
         return pid;
     } else {
         if ((pid = fork()) == 0) {
+            // CHILD CHILD
             close(in[1]);
             close(out[0]);
             close(err[0]);
@@ -171,32 +228,39 @@ _execute(int * pipes, char ** args)
             dup2(err[1], 2); 
             execv(args[0], args); 
         } else {
-            wait(&status);
+            // CHILD
+            int result;
+
             dup2(check_runtimerror[1], 1); 
+            signal(SIGALRM, alarm_handler);
+            signal(SIGCHLD, child_handler);
+            alarm(TIMEOUT);  // install an alarm to be fired after TIME_LIMIT
+            pause();
+
+            if (flag_timeout) {
+                // SIGALRM
+                result = waitpid(pid, &status, WNOHANG);
+                if (result == 0) {
+                    // child still running, so kill it
+                    kill(pid, SIGKILL);
+                    wait(&status);
+                    printf("-1");
+                    exit(0);
+                } else {
+                    // alarm triggered, but child finished normally
+                }
+            } else if (flag_child_done) {
+                // SIGCHLD 
+                // child finished normally
+                wait(&status);
+            }
             printf("%d", WIFEXITED(status));
             exit(0);
         }
     }
 }
 
-int 
-closecmd(const pid_t pid, int *pipes)
-{
-    int status;
-
-    close(pipes[0]);
-    close(pipes[1]);
-    close(pipes[2]);
-    waitpid(pid, &status, 0);
-    return status;
-}
-
-//
-// PIPE RELATED
-//
-
-char *
-read_from_pipe(int pfd, int check_runtimerror) {
+char * _read_pipe(int pfd, int check_runtimerror) {
     int result;
     char buf[BUF_SIZE];
     char * data = (char *) malloc(BUF_SIZE * 5);
@@ -218,22 +282,29 @@ read_from_pipe(int pfd, int check_runtimerror) {
     return data;
 }
 
-//
-// EXECUTE PROGRAM AND GET STDOUT, STDERR
-//
-char ** execute_get_result(char * args[]){
-    char ** result;
-    int pipes[PIPE_COUNT];
+int verify_result(char ** result) {
+    DPRINT(printf("STDERR: %s\n", result[1]));
+    DPRINT(printf("RUNTIMEERROR: %d\n", atoi(result[2])));
+    DPRINT(printf("STDOUTlen: %ld\n", strlen(result[0])));
+    DPRINT(printf("STDERRlen: %ld\n", strlen(result[1])));
 
-    result = (char **) malloc(sizeof(char *) * PIPE_COUNT - 1);
-    pid_t test = _execute(pipes, args);
+    if (atoi(result[2]) == 0 || strlen(result[1]) > 0)
+    // RUNTIME ERROR || EXECUTION ERROR
+        return -1;
+    else if (atoi(result[2]) == -1)
+    // TIMEOUT ERROR
+        return -2;
+    else
+        return 0;
+}
 
-    // result[0] -> stdout of child child process (actually execute program)
-    // result[1] -> stderr of child child process
-    // result[2] -> stdout of child process (check exit status of child child process)
-    result[0] = read_from_pipe(pipes[1], 0);
-    result[1] = read_from_pipe(pipes[2], 0); 
-    result[2] = read_from_pipe(pipes[3], 1); 
+int closecmd(const pid_t pid, int *pipes)
+{
+    int status;
 
-    return result;
+    close(pipes[0]);
+    close(pipes[1]);
+    close(pipes[2]);
+    waitpid(pid, &status, 0);
+    return status;
 }

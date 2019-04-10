@@ -1,68 +1,44 @@
+#include <stdio.h>
 #include <string.h>
-
-#include "util_worker.h"
-
-int  verify_result(char ** result) {
-    DPRINT(printf("STDERR: %s\n", result[1]));
-    DPRINT(printf("RUNTIMEERROR: %d\n", atoi(result[2])));
-    DPRINT(printf("STDOUTlen: %ld\n", strlen(result[0])));
-    DPRINT(printf("STDERRlen: %ld\n", strlen(result[1])));
-
-    if (atoi(result[2]) == 0 || strlen(result[1]) > 0)
-        return -1;
-    else
-        return 0;
-}
+#include <unistd.h>
+#include "worker.h"
 
 /* TODO
-timer should calculate execution time to test target program execution time exceeds 3 secs.
-IF build success, execute success => return output to socket
-IF build success, execute fail => return failure message to socket
-             RUN TIME ERROR
-             TIME EXCEED ERROR
-                refer: httpe://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.3.0/com.ibm.zos.v2r3.bpxbd00/rttims.htm
-IF build fail => return failure message to socket
-*/
-
-char * build_target() {
-    char ** result;
-    char * feedback;
-    char * CMD_BUILD[] = {
-        COMPILER, TARGET_FILE, 
-        "-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", NULL
-    };
-    char * CMD_EXECUTE_TARGET[] = { OUTPUT_FILE, NULL };
-
-    result = execute_get_result(CMD_BUILD);
-    feedback = (char *) malloc(sizeof(char));
-
-    if (strlen(result[1]) == 0){
-        result = execute_get_result(CMD_EXECUTE_TARGET);
-        if (verify_result(result) == -1) {
-            /* RUNTIME ERROR */
-            strcpy(feedback, "2");
-        } else {
-            /* PROGRAM EXIT NORMALLY
-             * RETURN OUTPUT TO INSTAGRAPD
-             */
-            free(feedback);
-            feedback = (char *) malloc(sizeof(char) * strlen(result[0]) + 1);
-            strcpy(feedback, "0");
-            strcat(feedback, result[0]);
-        }
-        remove(OUTPUT_FILE);
-    } else {
-        strcpy(feedback, "1");
-    }
-    remove(TARGET_FILE);
-    remove(TESTCASE_FILE);
-    return feedback;
-}
+ * deliver test.in to a.out
+ * receive requests forever
+ */
 
 int main(int argc, char *argv[])
 {
-    receive_csrc_testcase(argc, argv);
-    printf("%s\n", build_target());
+    sock_set * sc_sd;
+    char * result;
 
+    sc_sd = init_sock(argc, argv);
+    get_file(TARGET_FILE, sc_sd->clnt_sd);
+    get_file(TESTCASE_FILE, sc_sd->clnt_sd);
+
+    result = build_target();
+    switch (*result) {
+        case '0':
+            // PROGRAM EXIT NORMALLY
+            write(sc_sd->clnt_sd, "0", 1);
+            result++;
+            write(sc_sd->clnt_sd, result, strlen(result));
+            break;
+        case '1':
+            // BUILD FAILED
+            write(sc_sd->clnt_sd, "1", 1);
+            break;
+        case '2':
+            // RUNTIME ERROR
+            write(sc_sd->clnt_sd, "2", 1);
+            break;
+        case '3':
+            // TIMEOUT ERROR
+            write(sc_sd->clnt_sd, "3", 1);
+            break;
+    }
+
+    cleanup_socket(sc_sd);
     return 0;
 }

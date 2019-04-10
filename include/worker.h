@@ -15,6 +15,7 @@
 #define BUF_SIZE 512
 #define OUTPUT_BUF BUF_SIZE * 10
 #define PIPE_COUNT 4
+#define TIMEOUT 3
 
 #define TARGET_FILE "target.c"
 #define TESTCASE_FILE "test.in"
@@ -26,18 +27,19 @@ typedef struct {
     int clnt_sd;
 } sock_set;
 
-void error_handling(char *message);
-int get_file_size(int clnt_sd) ;
-void get_save_file(const char * filename, int clnt_sd );
-void _save_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) ;
-sock_set * init_accept_socket(int argc, char * argv[]) ;
+void error_handling(char *message) ;
+
+sock_set * init_sock(int argc, char * argv[]) ;
 void cleanup_socket(sock_set * sc_sd) ;
-int file_exists(const char * filename) ;
-void receive_csrc_testcase(int argc, char * argv[]) ;
-char * execute_get_output(const char * cmd) ;
+int _get_size(int clnt_sd) ;
+void get_file(const char * filename, int clnt_sd );
+void _get_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) ;
+
+char * build_target() ;
+pid_t _fork_subprocess(int * pipes, char ** args);
 int closecmd(const pid_t pid, int *pipes);
-char ** execute_get_result(char * args[]);
-pid_t _execute(int * pipes, char ** args);
-char * read_from_pipe(int pfd, int flag) ;
+char ** _execute(char * args[]);
+char * _read_pipe(int pfd, int flag) ;
+int  verify_result(char ** result) ;
 
 #endif

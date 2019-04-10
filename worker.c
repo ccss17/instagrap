@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "worker.h"
+
+#include "instagrap.h"
 
 /* TODO
  * deliver test.in to a.out

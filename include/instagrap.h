@@ -1,5 +1,5 @@
-#ifndef _UTIL_WORKER
-#define _UTIL_WORKER
+#ifndef _INSTAGRAP
+#define _INSTAGRAP
 
 #include <stdlib.h>
 #include <stdio.h>

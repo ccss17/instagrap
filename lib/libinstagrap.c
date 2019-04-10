@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
-#include "worker.h"
+#include "instagrap.h"
 
 volatile int flag_timeout = 0;
 volatile int flag_child_done = 0;

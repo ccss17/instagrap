@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "util_worker.h"
 
 char * verify_result(char ** result) {

@@ -1,13 +1,8 @@
 #ifndef _UTIL_WORKER
 #define _UTIL_WORKER
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
+#include <stdio.h>
 
 #define DEBUG 0
 #if DEBUG

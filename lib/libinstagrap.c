@@ -68,39 +68,31 @@ sock_set * init_sock(int argc, char * argv[]) {
     return sc_sd;
 }
 
-int _get_size(int clnt_sd) {
-    char buf[FILE_SIZE_INDICATOR];
-    read(clnt_sd, buf, FILE_SIZE_INDICATOR );
-    return atoi(buf);
-}
-
 void get_file(const char * filename, int clnt_sd ){
     FILE * fp;
     char buf[BUF_SIZE];
-    int read_cnt;
     int file_size;
+    int read_cnt;
 
     fp = fopen(filename, "wb");
-    file_size = _get_size(clnt_sd);
-    DPRINT(printf("file size : %d\n", file_size));
+    // get file size
+    read(clnt_sd, buf, FILE_SIZE_INDICATOR );
+    file_size = atoi(buf);
 
     while(1){
+        // get file piece and save file
         if (file_size < BUF_SIZE) {
-            _get_file(fp, clnt_sd, buf, file_size, read_cnt);
+            read_cnt=read(clnt_sd, buf, file_size );
+            fwrite((void*)buf, 1, read_cnt, fp);
             break;
         } else {
             file_size -= BUF_SIZE;
-            _get_file(fp, clnt_sd, buf, BUF_SIZE, read_cnt);
+            read_cnt=read(clnt_sd, buf, BUF_SIZE );
+            fwrite((void*)buf, 1, read_cnt, fp);
         }
     }
 
     fclose(fp);
-}
-
-void _get_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) {
-    read_cnt=read(clnt_sd, buf, size );
-    DPRINT(printf("buf : %s\n", buf));
-    fwrite((void*)buf, 1, read_cnt, fp);
 }
 
 //
@@ -108,17 +100,24 @@ void _get_file(FILE * fp, int clnt_sd, char buf[], int size, int read_cnt) {
 //
 
 int is_exists(char * fname) {
-    if( access( fname, F_OK) != -1 ) {
-        return 1;
-    } else {
-        return 0;
-    }
+    if( access( fname, F_OK) != -1 ) return 1;
+    else return 0;
+}
+
+int _build(char * build_target) {
+    char * CMD_BUILD[] = {
+        COMPILER, build_target, 
+        "-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", NULL
+    };
+        
+    _execute(CMD_BUILD);
+    return is_exists(OUTPUT_FILE);
 }
 
 char * build_target() {
     /*
     return "0..." program exit normally
-    return "1" failed build
+    return "1" failed _build
     return "2" runtime error
     return "3" timeout error
     */
@@ -126,44 +125,37 @@ char * build_target() {
     int build_success;
     char ** result;
     char * feedback;
-    char * CMD_BUILD[] = {
-        COMPILER, TARGET_FILE, 
-        "-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", NULL
-    };
-    char * CMD_EXECUTE_TARGET[] = { OUTPUT_FILE, NULL };
 
-    result = _execute(CMD_BUILD);
     feedback = (char *) malloc(sizeof(char));
-    
-    build_success = is_exists(OUTPUT_FILE);
+    build_success = _build(TARGET_FILE);
 
     if (build_success){
         // BUILD SUCCESS
-        result = _execute(CMD_EXECUTE_TARGET);
-        flag = verify_result(result);
+        result = _execute((char *[]){ OUTPUT_FILE, NULL });
+        flag = _verify_result(result);
         if (flag == -1) {
-            /* RUNTIME ERROR */
+            DPRINT(printf("%s\n", result[1]));
+            // RUNTIME ERROR 
             strcpy(feedback, "2");
         } else if (flag == -2){
-            /* TIMEOUT ERROR */
+            // TIMEOUT ERROR 
             strcpy(feedback, "3");
         }
         else {
-            /* PROGRAM EXIT NORMALLY
-             * RETURN OUTPUT TO INSTAGRAPD
-             */
+            // PROGRAM EXIT NORMALLY
+            // RETURN OUTPUT TO INSTAGRAPD
             free(feedback);
             feedback = (char *) malloc(sizeof(char) * strlen(result[0]) + 1);
             strcpy(feedback, "0");
             strcat(feedback, result[0]);
         }
-        remove(OUTPUT_FILE);
+        /*remove(OUTPUT_FILE);*/
     } else {
         // BUILD FAIL
         strcpy(feedback, "1");
     }
-    remove(TARGET_FILE);
-    remove(TESTCASE_FILE);
+    /*remove(TARGET_FILE);*/
+    /*remove(TESTCASE_FILE);*/
     return feedback;
 }
 
@@ -232,28 +224,31 @@ pid_t _fork_subprocess(int * pipes, char ** args)
             int result;
 
             dup2(check_runtimerror[1], 1); 
-            signal(SIGALRM, alarm_handler);
-            signal(SIGCHLD, child_handler);
-            alarm(TIMEOUT);  // install an alarm to be fired after TIME_LIMIT
-            pause();
+            /*signal(SIGALRM, alarm_handler);*/
+            /*signal(SIGCHLD, child_handler);*/
+            /*alarm(TIMEOUT);  // install an alarm to be fired after TIME_LIMIT*/
+            /*pause();*/
 
-            if (flag_timeout) {
-                // SIGALRM
-                result = waitpid(pid, &status, WNOHANG);
-                if (result == 0) {
-                    // child still running, so kill it
-                    kill(pid, SIGKILL);
-                    wait(&status);
-                    printf("-1");
-                    exit(0);
-                } else {
-                    // alarm triggered, but child finished normally
-                }
-            } else if (flag_child_done) {
-                // SIGCHLD 
-                // child finished normally
-                wait(&status);
-            }
+            /*if (flag_timeout) {*/
+                /*// SIGALRM*/
+                /*result = waitpid(pid, &status, WNOHANG);*/
+                /*if (result == 0) {*/
+                    /*// child still running, so kill it*/
+                    /*kill(pid, SIGKILL);*/
+                    /*wait(&status);*/
+                    /*printf("-1");*/
+                    /*exit(0);*/
+                /*} else {*/
+                    /*// alarm triggered, but child finished normally*/
+                /*}*/
+            /*} else if (flag_child_done) {*/
+                /*// SIGCHLD */
+                /*// child finished normally*/
+                /*wait(&status);*/
+            /*}*/
+            // print 1 --> PROGRAM EXIT NORMALLY
+            // print 0 --> RUNTIME ERROR
+            wait(NULL);
             printf("%d", WIFEXITED(status));
             exit(0);
         }
@@ -282,19 +277,23 @@ char * _read_pipe(int pfd, int check_runtimerror) {
     return data;
 }
 
-int verify_result(char ** result) {
+int _verify_result(char ** result) {
+    DPRINT(printf("STDOUT: %s\n", result[0]));
     DPRINT(printf("STDERR: %s\n", result[1]));
     DPRINT(printf("RUNTIMEERROR: %d\n", atoi(result[2])));
     DPRINT(printf("STDOUTlen: %ld\n", strlen(result[0])));
     DPRINT(printf("STDERRlen: %ld\n", strlen(result[1])));
 
     if (atoi(result[2]) == 0 || strlen(result[1]) > 0)
-    // RUNTIME ERROR || EXECUTION ERROR
+        // RUNTIME ERROR || EXECUTION ERROR
         return -1;
     else if (atoi(result[2]) == -1)
-    // TIMEOUT ERROR
+        // TIMEOUT ERROR
         return -2;
     else
+        /* PROGRAM EXIT NORMALLY
+         * RETURN OUTPUT TO INSTAGRAPD
+         */
         return 0;
 }
 

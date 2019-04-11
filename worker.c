@@ -19,25 +19,10 @@ int main(int argc, char *argv[])
     get_file(TESTCASE_FILE, sc_sd->clnt_sd);
 
     result = build_target();
-    switch (*result) {
-        case '0':
-            // PROGRAM EXIT NORMALLY
-            write(sc_sd->clnt_sd, "0", 1);
-            result++;
-            write(sc_sd->clnt_sd, result, strlen(result));
-            break;
-        case '1':
-            // BUILD FAILED
-            write(sc_sd->clnt_sd, "1", 1);
-            break;
-        case '2':
-            // RUNTIME ERROR
-            write(sc_sd->clnt_sd, "2", 1);
-            break;
-        case '3':
-            // TIMEOUT ERROR
-            write(sc_sd->clnt_sd, "3", 1);
-            break;
+    write(sc_sd->clnt_sd, result, 1);
+    if ( *result == '0' ) {
+        result++;
+        write(sc_sd->clnt_sd, result, strlen(result));
     }
 
     cleanup_socket(sc_sd);

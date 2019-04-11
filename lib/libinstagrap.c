@@ -68,30 +68,49 @@ sock_set * init_sock(int argc, char * argv[]) {
     return sc_sd;
 }
 
-void get_file(const char * filename, int clnt_sd ){
-    FILE * fp;
+data_set * receive_data( int sock ) {
     char buf[BUF_SIZE];
-    int file_size;
+    data_set * data_s;
     int read_cnt;
+    int tmp_size;
 
-    fp = fopen(filename, "wb");
+    data_s = (data_set *) malloc(sizeof(data_set));
     // get file size
-    read(clnt_sd, buf, FILE_SIZE_INDICATOR );
-    file_size = atoi(buf);
+    read(sock, buf, FILE_SIZE_INDICATOR );
+    data_s->size = atoi(buf);
+    data_s->data = (char *)malloc(sizeof(char) * data_s->size);
+    tmp_size = data_s->size;
 
-    while(1){
-        // get file piece and save file
-        if (file_size < BUF_SIZE) {
-            read_cnt=read(clnt_sd, buf, file_size );
-            fwrite((void*)buf, 1, read_cnt, fp);
+    tmp_size -= BUF_SIZE;
+    read(sock, buf, BUF_SIZE );
+    strcpy(data_s->data, buf);
+
+    while(1) {
+        if (tmp_size <= 0)
+            break;
+        // get data piece
+        else if (tmp_size < BUF_SIZE) {
+            read(sock, buf, tmp_size );
+            strcat(data_s->data, buf);
             break;
         } else {
-            file_size -= BUF_SIZE;
-            read_cnt=read(clnt_sd, buf, BUF_SIZE );
-            fwrite((void*)buf, 1, read_cnt, fp);
+            tmp_size -= BUF_SIZE;
+            read(sock, buf, BUF_SIZE );
+            strcat(data_s->data, buf);
         }
     }
+    return data_s;
+}
 
+
+void save_file(const char * filename, data_set *data_s) {
+    FILE * fp;
+
+    DPRINT(printf("saved filename:%s\n", filename));
+    DPRINT(printf("saved data::%s\n", data_s->data));
+
+    fp = fopen(filename, "wb");
+    fwrite((void*)data_s->data, sizeof(char), data_s->size, fp);
     fclose(fp);
 }
 
@@ -99,22 +118,12 @@ void get_file(const char * filename, int clnt_sd ){
 // FORK CHILD PROCESS 
 //
 
-int is_exists(char * fname) {
-    if( access( fname, F_OK) != -1 ) return 1;
+int exists(char * fname) {
+    if ( access( fname, F_OK) != -1 ) return 1;
     else return 0;
 }
 
-int _build(char * build_target) {
-    char * CMD_BUILD[] = {
-        COMPILER, build_target, 
-        "-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", NULL
-    };
-        
-    _execute(CMD_BUILD);
-    return is_exists(OUTPUT_FILE);
-}
-
-char * build_target() {
+int build(char * build_target) {
     /*
     return "0..." program exit normally
     return "1" failed _build
@@ -122,44 +131,27 @@ char * build_target() {
     return "3" timeout error
     */
     int flag; // 0 : PROGRAM NORMALLY EXIT, -1 : PROGRAM ERROR, -2 : TIMEOUT ERROR
-    int build_success;
     char ** result;
     char * feedback;
+    char * CMD_BUILD[] = {
+        COMPILER, build_target, 
+        "-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", NULL
+    };
 
     feedback = (char *) malloc(sizeof(char));
-    build_success = _build(TARGET_FILE);
+    execute(CMD_BUILD);
+    remove(build_target);
 
-    if (build_success){
+    if (exists(DEFAULT_OUTPUT_FILE)){
         // BUILD SUCCESS
-        result = _execute((char *[]){ OUTPUT_FILE, NULL });
-        flag = _verify_result(result);
-        if (flag == -1) {
-            DPRINT(printf("%s\n", result[1]));
-            // RUNTIME ERROR 
-            strcpy(feedback, "2");
-        } else if (flag == -2){
-            // TIMEOUT ERROR 
-            strcpy(feedback, "3");
-        }
-        else {
-            // PROGRAM EXIT NORMALLY
-            // RETURN OUTPUT TO INSTAGRAPD
-            free(feedback);
-            feedback = (char *) malloc(sizeof(char) * strlen(result[0]) + 1);
-            strcpy(feedback, "0");
-            strcat(feedback, result[0]);
-        }
-        /*remove(OUTPUT_FILE);*/
+        return 0;
     } else {
         // BUILD FAIL
-        strcpy(feedback, "1");
+        return -1;
     }
-    /*remove(TARGET_FILE);*/
-    /*remove(TESTCASE_FILE);*/
-    return feedback;
 }
 
-char ** _execute(char * args[]){
+char ** execute(char * args[]) {
     char ** result;
     int pipes[PIPE_COUNT];
 
@@ -277,7 +269,7 @@ char * _read_pipe(int pfd, int check_runtimerror) {
     return data;
 }
 
-int _verify_result(char ** result) {
+int verify_result(char ** result) {
     DPRINT(printf("STDOUT: %s\n", result[0]));
     DPRINT(printf("STDERR: %s\n", result[1]));
     DPRINT(printf("RUNTIMEERROR: %d\n", atoi(result[2])));

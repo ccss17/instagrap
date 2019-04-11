@@ -31,7 +31,7 @@ def get_result(soc):
 def test():
     # host = '54.180.132.66'
     host = 'localhost'
-    port = 8000
+    port = 8001
     mySocket = socket.socket()
     mySocket.connect((host,port))
 
@@ -46,10 +46,9 @@ int main(){
     return 0;
 }
 '''
-
     test_case = r'''1 2'''
-    send_data_chunk(mySocket, c_src)
     send_data_chunk(mySocket, test_case)
+    send_data_chunk(mySocket, c_src)
 
     get_result(mySocket)
 

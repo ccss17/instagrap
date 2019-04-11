@@ -31,18 +31,18 @@ typedef struct {
     int clnt_sd;
 } sock_set;
 
-void error_handling(char *message) ;
 
-sock_set * init_sock(int argc, char * argv[]) ;
+sock_set * init_sock(char * listen_port);
 void cleanup_socket(sock_set * sc_sd) ;
 data_set * receive_data( int sock ) ;
 void save_file(const char * filename, data_set *ydata_s) ;
 
 int build(char * build_target) ;
-pid_t _fork_subprocess(int * pipes, char ** args);
-int closecmd(const pid_t pid, int *pipes);
 char ** execute(char * args[]);
+pid_t _fork_subprocess(int * pipes, char ** args);
 char * _read_pipe(int pfd, int flag) ;
 int  verify_result(char ** result) ;
 
+void error_handling(char *message) ;
+int closecmd(const pid_t pid, int *pipes);
 #endif

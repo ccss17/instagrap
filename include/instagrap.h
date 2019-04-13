@@ -4,15 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define DEBUG 1
-#if DEBUG
-    #define DPRINT(func) func
-#else
-    #define DPRINT(func)
-#endif
+#define DEBUG 0
 
 #define FILE_SIZE_INDICATOR 4
-#define BUF_SIZE 512
+#define BUF_SIZE 128
 #define OUTPUT_BUF BUF_SIZE * 10
 #define PIPE_COUNT 4
 #define TIMEOUT 3
@@ -33,13 +28,13 @@ typedef struct {
 
 
 sock_set * init_sock(char * listen_port);
-void cleanup_socket(sock_set * sc_sd) ;
 data_set * receive_data( int sock ) ;
 void save_file(const char * filename, data_set *ydata_s) ;
+int init_serv_sock(char * listen_port);
 
 int build(char * build_target) ;
-char ** execute(char * args[]);
-pid_t _fork_subprocess(int * pipes, char ** args);
+char ** execute(char * args[], char * input);
+pid_t _fork_subprocess(int * pipes, char ** args, char * input);
 char * _read_pipe(int pfd, int flag) ;
 int  verify_result(char ** result) ;
 

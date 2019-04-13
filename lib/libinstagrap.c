@@ -13,41 +13,33 @@ volatile int flag_child_done = 0;
 void child_handler(int sig) { flag_child_done = 1; }
 void alarm_handler(int sig) { flag_timeout = 1; }
 
-sock_set * init_sock(char * listen_port){
-    DPRINT(printf("port:%s\n", listen_port));
-    sock_set * sc_sd;
-    int serv_sd, clnt_sd;
+int init_serv_sock(char * listen_port){
+#if DEBUG
+    printf("port:%s\n", listen_port);
+#endif
+    int serv_sd;
     char buf[BUF_SIZE];
     int read_cnt;
 
-    struct sockaddr_in serv_adr, clnt_adr;
-    socklen_t clnt_adr_sz;
+    struct sockaddr_in serv_adr;
 
-    sc_sd = (sock_set *) malloc(sizeof(sock_set));
-
-    sc_sd->serv_sd = socket(PF_INET, SOCK_STREAM, 0);   
-    if (sc_sd->serv_sd == -1) error_handling("socket() error");
+    serv_sd = socket(PF_INET, SOCK_STREAM, 0);   
+    if (serv_sd == -1) 
+        error_handling("socket() error");
 
     memset(&serv_adr, 0, sizeof(serv_adr));
     serv_adr.sin_family=AF_INET;
     serv_adr.sin_addr.s_addr=htonl(INADDR_ANY);
     serv_adr.sin_port=htons(atoi(listen_port));
 
-    if(bind(sc_sd->serv_sd, (struct sockaddr*)&serv_adr, sizeof(serv_adr)) == -1)
+    if(bind(serv_sd, (struct sockaddr*)&serv_adr, sizeof(serv_adr)) == -1) {
         error_handling("bind() error");
-    if(listen(sc_sd->serv_sd, 5) == -1)
+        exit(1);
+    }
+    if(listen(serv_sd, 5) == -1)
         error_handling("listen() error");
 
-    clnt_adr_sz=sizeof(clnt_adr);    
-    sc_sd->clnt_sd=accept(sc_sd->serv_sd, (struct sockaddr*)&clnt_adr, &clnt_adr_sz);
-
-    return sc_sd;
-}
-
-void cleanup_socket(sock_set * sc_sd) {
-    shutdown(sc_sd->clnt_sd, SHUT_WR); 
-    close(sc_sd->clnt_sd);
-    close(sc_sd->serv_sd);
+    return serv_sd;
 }
 
 data_set * receive_data( int sock ) {
@@ -61,24 +53,36 @@ data_set * receive_data( int sock ) {
     read(sock, buf, FILE_SIZE_INDICATOR );
     data_s->size = atoi(buf);
     data_s->data = (char *)malloc(sizeof(char) * data_s->size);
-    tmp_size = data_s->size;
 
+    if (data_s->size <= BUF_SIZE) {
+        read(sock, data_s->data, data_s->size );
+#if DEBUG
+        printf("file size:%d\n", data_s->size);
+        printf("read from sock:%s\n", data_s->data);
+#endif
+        return data_s;
+    }
+
+    tmp_size = data_s->size;
     tmp_size -= BUF_SIZE;
     read(sock, buf, BUF_SIZE );
-    strcpy(data_s->data, buf);
+#if DEBUG
+    printf("file size:%d\n", data_s->size);
+    printf("read from sock:%s\n", buf);
+#endif
+    strncpy(data_s->data, buf, strlen(buf));
 
     while(1) {
         if (tmp_size <= 0)
-            break;
-        // get data piece
+            break; // get data piece
         else if (tmp_size < BUF_SIZE) {
             read(sock, buf, tmp_size );
-            strcat(data_s->data, buf);
+            strncat(data_s->data, buf, tmp_size);
             break;
         } else {
             tmp_size -= BUF_SIZE;
             read(sock, buf, BUF_SIZE );
-            strcat(data_s->data, buf);
+            strncat(data_s->data, buf, BUF_SIZE);
         }
     }
     return data_s;
@@ -88,8 +92,10 @@ data_set * receive_data( int sock ) {
 void save_file(const char * filename, data_set *data_s) {
     FILE * fp;
 
-    DPRINT(printf("saved filename:%s\n", filename));
-    DPRINT(printf("saved data:%s\n", data_s->data));
+#if DEBUG
+    printf("saved filename:%s\n", filename);
+    printf("saved data:%s\n", data_s->data);
+#endif
 
     fp = fopen(filename, "wb");
     fwrite((void*)data_s->data, sizeof(char), data_s->size, fp);
@@ -121,7 +127,7 @@ int build(char * build_target) {
     };
 
     feedback = (char *) malloc(sizeof(char));
-    execute(CMD_BUILD);
+    execute(CMD_BUILD, NULL);
 
     if (exists(DEFAULT_OUTPUT_FILE)){
         // BUILD SUCCESS
@@ -132,12 +138,12 @@ int build(char * build_target) {
     }
 }
 
-char ** execute(char * args[]) {
+char ** execute(char * args[], char * input) {
     char ** result;
     int pipes[PIPE_COUNT];
 
     result = (char **) malloc(sizeof(char *) * PIPE_COUNT - 1);
-    _fork_subprocess(pipes, args);
+    _fork_subprocess(pipes, args, input);
 
     // result[0] -> stdout of child child process (actually execute program)
     // result[1] -> stderr of child child process
@@ -149,7 +155,7 @@ char ** execute(char * args[]) {
     return result;
 }
 
-pid_t _fork_subprocess(int * pipes, char ** args)
+pid_t _fork_subprocess(int * pipes, char ** args, char * input)
 {
     int status, in[2], out[2], err[2], check_runtimerror[2];
     pid_t pid;
@@ -200,6 +206,9 @@ pid_t _fork_subprocess(int * pipes, char ** args)
             signal(SIGALRM, alarm_handler);
             signal(SIGCHLD, child_handler);
             alarm(TIMEOUT);  // install an alarm to be fired after TIME_LIMIT
+            if (input != NULL) {
+                write(in[1], input, strlen(input) + 1);
+            }
             pause();
 
             if (flag_timeout) {
@@ -233,10 +242,10 @@ char * _read_pipe(int pfd, int check_runtimerror) {
     char buf[BUF_SIZE];
     char * data = (char *) malloc(BUF_SIZE * 5);
 
-    result = read(pfd, data, BUF_SIZE);
+    read(pfd, data, BUF_SIZE);
     if (check_runtimerror) return data;
 
-    for(;;){
+    for(;;) {
         result = read(pfd, buf, BUF_SIZE);
         if (result == -1) {
             error_handling("read error");
@@ -251,11 +260,13 @@ char * _read_pipe(int pfd, int check_runtimerror) {
 }
 
 int verify_result(char ** result) {
-    DPRINT(printf("STDOUT:%s\n", result[0]));
-    DPRINT(printf("STDERR:%s\n", result[1]));
-    DPRINT(printf("RUNTIMEERROR:%d\n", atoi(result[2])));
-    DPRINT(printf("STDOUTlen:%ld\n", strlen(result[0])));
-    DPRINT(printf("STDERRlen:%ld\n", strlen(result[1])));
+#if DEBUG
+    printf("STDOUT:%s\n", result[0]);
+    printf("STDERR:%s\n", result[1]);
+    printf("RUNTIMEERROR:%d\n", atoi(result[2]));
+    printf("STDOUTlen:%ld\n", strlen(result[0]));
+    printf("STDERRlen:%ld\n", strlen(result[1]));
+#endif
 
     if (atoi(result[2]) == 0 || strlen(result[1]) > 0)
         // RUNTIME ERROR || EXECUTION ERROR

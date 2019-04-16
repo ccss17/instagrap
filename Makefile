@@ -1,15 +1,24 @@
 override CFLAGS += -g -ggdb
 CC = gcc
-OUTPUT = out/worker
+WORKER = bin/worker
+SUBMITTER = bin/submitter
+MODULE = instagrap
+LIB = lib$(MODULE)
 
-all: lib/libworker.a worker 
+all: lib/$(LIB).a worker submitter
 
-lib/libworker.a: lib/libworker.c
+lib/$(LIB).a: lib/$(LIB).c
 	make -C lib
 	
 worker: worker.c 
-	$(CC) $? -o $(OUTPUT) $(CFLAGS) -Iinclude -Llib -lworker
+	$(CC) $? -o $(WORKER) $(CFLAGS) -Iinclude -Llib -l$(MODULE)
+
+submitter: submitter.c
+	$(CC) $? -o $(SUBMITTER) $(CFLAGS) -Iinclude -Llib -l$(MODULE)
 
 clean:
-	rm $(OUTPUT)
+	rm $(WORKER)
+	rm $(SUBMITTER)
+	rm a.out
+	rm target.c
 	make clean -C lib

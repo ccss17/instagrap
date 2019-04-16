@@ -14,24 +14,25 @@ def send_data_chunk(soc, data):
  
 def test():
     host = '54.180.132.66'
-    port = 8000
+    port = 8001
     mySocket = socket.socket()
     mySocket.connect((host,port))
 
-    c_src = '''\
+    c_src = r'''
 #include <stdio.h>
 
 void main(){
     puts("this is C source code");
     // invoke address error
-    int * p = 0;
-    * p = 10;
+    //int * p = 0;
+    //* p = 10;
     // invoke infinite loop overflow
-    main();
+    // main();
+    sleep(1000);
     // invoke zero division error
-    printf("%d\n", 7 / 0);
+    // printf("%d\n", 7 / 0);
 }'''
-    test_case = '''\
+    test_case = r'''
 10 20 30
 '''
     send_data_chunk(mySocket, c_src)

@@ -7,3 +7,5 @@ bin/
 *.o
 maketest/
 forktest/
+test*
+!test/

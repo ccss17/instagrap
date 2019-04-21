@@ -1,9 +1,36 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 
 #include "instagrap.h"
+
+const char * ARG_PARSER = ":p:h";
+
+void need_help() { fprintf(stderr, "enter './worker -h' for help message\n"); }
+void help_usage() { fprintf(stderr, "Usage: ./worker -p <PORT> \n"); }
+
+int argparse(int argc, char * argv[]) {
+    int opt;
+    while((opt = getopt(argc, argv, ARG_PARSER)) != -1)  
+    {
+        switch(opt)  
+        {
+            case 'p':
+                return init_serv_sock(optarg);
+            case 'h':
+                help_usage();
+                exit(1);
+            case ':': 
+                fprintf(stderr, "option needs a value\n");
+                exit(1);
+            case '?':  
+                fprintf(stderr, "unknown option: %c\n", optopt); 
+                break;  
+        }  
+    }
+}
 
 void worker(int serv_sd) {
     int clnt_sd;
@@ -76,17 +103,19 @@ void worker(int serv_sd) {
 
 int main( int argc, char *argv[] )
 {
-    if(argc!=2) {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        exit(1);
+    if (argc == 1) {
+        help_usage();
+        return 1;
     }
 
     int serv_sd;
-
-    serv_sd = init_serv_sock(argv[1]);
-
-    while (1) {
-        worker(serv_sd);
+    
+    serv_sd = argparse(argc, argv);
+    if (serv_sd == -1) {
+        fprintf(stderr, "error occur when initializing server socket\n");
+        return -1;
     }
+    while(1) worker(serv_sd);
+    
     return 0;
 }

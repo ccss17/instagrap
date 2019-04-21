@@ -13,10 +13,26 @@ volatile int flag_child_done = 0;
 void child_handler(int sig) { flag_child_done = 1; }
 void alarm_handler(int sig) { flag_timeout = 1; }
 
-int init_serv_sock(char * listen_port){
+int is_digit(char digit){ return digit <= '9' && digit >= '0'; }
+int is_integer(char * num) {
+    int i = 0;
+    if (num[0] == '-')
+        i = 1;
+    for (; num[i] != 0; i++) {
+        if (!is_digit(num[i]))
+            return 0;
+    }
+    return 1;
+}
+
+int init_serv_sock(char * listen_port) {
 #if DEBUG
     printf("port:%s\n", listen_port);
 #endif
+    if (!is_integer(listen_port)){
+        fprintf(stderr, "port number must be an integer\n");
+        return -1;
+    }
     int serv_sd;
     char buf[BUF_SIZE];
     int read_cnt;
@@ -39,6 +55,7 @@ int init_serv_sock(char * listen_port){
     if(listen(serv_sd, 5) == -1)
         error_handling("listen() error");
 
+    fprintf(stdout, "start listening at port %s...\n", listen_port);
     return serv_sd;
 }
 

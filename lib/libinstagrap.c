@@ -28,9 +28,9 @@ int init_serv_sock(char * listen_port){
         error_handling("socket() error");
 
     memset(&serv_adr, 0, sizeof(serv_adr));
-    serv_adr.sin_family=AF_INET;
-    serv_adr.sin_addr.s_addr=htonl(INADDR_ANY);
-    serv_adr.sin_port=htons(atoi(listen_port));
+    serv_adr.sin_family = AF_INET;
+    serv_adr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_adr.sin_port = htons(atoi(listen_port));
 
     if(bind(serv_sd, (struct sockaddr*)&serv_adr, sizeof(serv_adr)) == -1) {
         error_handling("bind() error");

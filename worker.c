@@ -5,17 +5,27 @@
 
 #include "instagrap.h"
 
-void worker(int serv_sd) {
+int accept_connection(int serv_sd){
     int clnt_sd;
     struct sockaddr_in clnt_adr;
     socklen_t clnt_adr_sz;
+
+    clnt_adr_sz = sizeof(clnt_adr);
+    return accept(serv_sd, (struct sockaddr*)&clnt_adr, &clnt_adr_sz);
+}
+
+void worker(int serv_sd) {
+    int clnt_sd;
+    /*struct sockaddr_in clnt_adr;*/
+    /*socklen_t clnt_adr_sz;*/
     char ** result;
     char * feedback;
     data_set * testcase;
     data_set * targetc;
 
-    clnt_adr_sz = sizeof(clnt_adr);
-    clnt_sd = accept(serv_sd, (struct sockaddr*)&clnt_adr, &clnt_adr_sz);
+    /*clnt_adr_sz = sizeof(clnt_adr);*/
+    /*clnt_sd = accept(serv_sd, (struct sockaddr*)&clnt_adr, &clnt_adr_sz);*/
+    clnt_sd = accept_connection(serv_sd);
 
     feedback = (char *)malloc(sizeof(char));
     testcase = receive_data(clnt_sd);
@@ -76,7 +86,7 @@ void worker(int serv_sd) {
 
 int main( int argc, char *argv[] )
 {
-    if(argc!=2) {
+    if(argc != 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         exit(1);
     }

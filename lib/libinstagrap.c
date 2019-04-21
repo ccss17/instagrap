@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <assert.h>
 
 #include "instagrap.h"
 
@@ -25,10 +26,79 @@ int is_integer(char * num) {
     return 1;
 }
 
+int establish_connection(char * ip, char * port) {
+    int sd;
+    FILE *fp;
+
+    char buf[BUF_SIZE];
+    int read_cnt;
+    struct sockaddr_in serv_adr;
+
+    sd=socket(PF_INET, SOCK_STREAM, 0);   
+
+    memset(&serv_adr, 0, sizeof(serv_adr));
+    serv_adr.sin_family = AF_INET;
+    serv_adr.sin_addr.s_addr = inet_addr(ip);
+    serv_adr.sin_port = htons(atoi(port));
+
+    connect(sd, (struct sockaddr*)&serv_adr, sizeof(serv_adr));
+
+    return sd;
+}
+
+data_set * readfile(char *filename) {
+    char *buf = NULL;
+    int filesize, read_size;
+    FILE *file = fopen(filename, "r");
+    data_set * file_data;
+
+    file_data = (data_set *) malloc(sizeof(data_set));
+
+    if (file) {
+        fseek(file, 0, SEEK_END);
+        file_data->size = ftell(file);
+        rewind(file);
+
+        file_data->data = (char*) malloc(sizeof(char) * (file_data->size + 1) );
+        read_size = fread(file_data->data, sizeof(char), file_data->size, file);
+        file_data->data[file_data->size] = '\0';
+
+        if (file_data->size != read_size) {
+            free(file_data->data);
+            file_data->data = NULL;
+        }
+
+        fclose(file);
+    }
+
+    return file_data;
+}
+
+void send_dataset(int sock, data_set * ds) {
+    char * size_indicator;
+
+    size_indicator = (char *)malloc(sizeof(char) * FILE_SIZE_INDICATOR);
+    sprintf(size_indicator, "%0.4ld", ds->size);
+    write(sock, size_indicator, FILE_SIZE_INDICATOR);
+    write(sock, ds->data, strlen(ds->data));
+}
+
+int accept_connection(int serv_sd) {
+    int clnt_sd;
+    struct sockaddr_in clnt_adr;
+    socklen_t clnt_adr_sz;
+    char client_ip[INET_ADDRSTRLEN];
+
+    clnt_adr_sz = sizeof(clnt_adr);
+    clnt_sd = accept(serv_sd, (struct sockaddr*)&clnt_adr, &clnt_adr_sz);
+    inet_ntop(AF_INET, &(clnt_adr.sin_addr), client_ip, INET_ADDRSTRLEN);
+    printf("\n#######################################\n");
+    printf("accept requests from IP:%s\n", client_ip);
+
+    return clnt_sd;
+}
+
 int init_serv_sock(char * listen_port) {
-#if DEBUG
-    printf("port:%s\n", listen_port);
-#endif
     if (!is_integer(listen_port)){
         fprintf(stderr, "port number must be an integer\n");
         return -1;
@@ -44,9 +114,9 @@ int init_serv_sock(char * listen_port) {
         error_handling("socket() error");
 
     memset(&serv_adr, 0, sizeof(serv_adr));
-    serv_adr.sin_family=AF_INET;
-    serv_adr.sin_addr.s_addr=htonl(INADDR_ANY);
-    serv_adr.sin_port=htons(atoi(listen_port));
+    serv_adr.sin_family = AF_INET;
+    serv_adr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_adr.sin_port = htons(atoi(listen_port));
 
     if(bind(serv_sd, (struct sockaddr*)&serv_adr, sizeof(serv_adr)) == -1) {
         error_handling("bind() error");
@@ -69,12 +139,13 @@ data_set * receive_data( int sock ) {
     // get file size
     read(sock, buf, FILE_SIZE_INDICATOR );
     data_s->size = atoi(buf);
-    data_s->data = (char *)malloc(sizeof(char) * data_s->size);
+    data_s->data = (char *)malloc(sizeof(char) * data_s->size + 1);
 
     if (data_s->size <= BUF_SIZE) {
         read(sock, data_s->data, data_s->size );
+        data_s->data[data_s->size] = '\0';
 #if DEBUG
-        printf("file size:%d\n", data_s->size);
+        printf("file size:%ld\n", data_s->size);
         printf("read from sock:%s\n", data_s->data);
 #endif
         return data_s;
@@ -84,7 +155,7 @@ data_set * receive_data( int sock ) {
     tmp_size -= BUF_SIZE;
     read(sock, buf, BUF_SIZE );
 #if DEBUG
-    printf("file size:%d\n", data_s->size);
+    printf("file size:%ld\n", data_s->size);
     printf("read from sock:%s\n", buf);
 #endif
     strncpy(data_s->data, buf, strlen(buf));
@@ -102,6 +173,7 @@ data_set * receive_data( int sock ) {
             strncat(data_s->data, buf, BUF_SIZE);
         }
     }
+    data_s->data[data_s->size] = '\0';
     return data_s;
 }
 
@@ -313,4 +385,47 @@ void error_handling(char *message) {
     fputs(message, stderr);
     fputc('\n', stderr);
     exit(1);
+}
+
+char** str_split(char* a_str, const char a_delim) {
+    char** result    = 0;
+    size_t count     = 0;
+    char* tmp        = a_str;
+    char* last_comma = 0;
+    char delim[2];
+    delim[0] = a_delim;
+    delim[1] = 0;
+
+    /* Count how many elements will be extracted. */
+    while (*tmp) {
+        if (a_delim == *tmp) {
+            count++;
+            last_comma = tmp;
+        }
+        tmp++;
+    }
+
+    /* Add space for trailing token. */
+    count += last_comma < (a_str + strlen(a_str) - 1);
+
+    /* Add space for terminating null string so caller
+    *        knows where the list of returned strings ends. */
+    count++;
+
+    result = malloc(sizeof(char*) * count);
+
+    if (result) {
+        size_t idx  = 0;
+        char* token = strtok(a_str, delim);
+
+        while (token) {
+            assert(idx < count);
+            *(result + idx++) = strdup(token);
+            token = strtok(0, delim);
+        }
+        assert(idx == count - 1);
+        *(result + idx) = 0;
+    }
+
+    return result;
 }

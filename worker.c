@@ -3,46 +3,26 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #include "instagrap.h"
 
 const char * ARG_PARSER = ":p:h";
 
 void need_help() { fprintf(stderr, "enter './worker -h' for help message\n"); }
-void help_usage() { fprintf(stderr, "Usage: ./worker -p <PORT> \n"); }
+void help() { fprintf(stderr, "Usage: ./worker -p <PORT> \n"); }
 
-int argparse(int argc, char * argv[]) {
-    int opt;
-    while((opt = getopt(argc, argv, ARG_PARSER)) != -1)  
-    {
-        switch(opt)  
-        {
-            case 'p':
-                return init_serv_sock(optarg);
-            case 'h':
-                help_usage();
-                exit(1);
-            case ':': 
-                fprintf(stderr, "option needs a value\n");
-                exit(1);
-            case '?':  
-                fprintf(stderr, "unknown option: %c\n", optopt); 
-                break;  
-        }  
-    }
-}
-
-void worker(int serv_sd) {
+void * worker(void * pclnt_sd) {
     int clnt_sd;
-    struct sockaddr_in clnt_adr;
-    socklen_t clnt_adr_sz;
     char ** result;
     char * feedback;
     data_set * testcase;
     data_set * targetc;
 
-    clnt_adr_sz = sizeof(clnt_adr);
-    clnt_sd = accept(serv_sd, (struct sockaddr*)&clnt_adr, &clnt_adr_sz);
+    clnt_sd = * (int *)pclnt_sd;
+#if DEBUG
+    printf("clnt_sd : %d\n", clnt_sd);
+#endif
 
     feedback = (char *)malloc(sizeof(char));
     testcase = receive_data(clnt_sd);
@@ -89,7 +69,10 @@ void worker(int serv_sd) {
     }
     write(clnt_sd, feedback, 1);
     if ( *feedback == '0' ) {
-        write(clnt_sd, feedback + 1, strlen(feedback + 1));
+        data_set * return_output = (data_set *) malloc(sizeof(data_set));
+        return_output->size = strlen(feedback + 1);
+        return_output->data = feedback+1;
+        send_dataset(clnt_sd, return_output);
     }
 
 #if ! DEBUG
@@ -99,23 +82,55 @@ void worker(int serv_sd) {
     /*free(result);*/
     shutdown(clnt_sd, SHUT_WR); 
     close(clnt_sd);
+    printf("#######################################\n");
 }
 
 int main( int argc, char *argv[] )
 {
     if (argc == 1) {
-        help_usage();
+        help();
         return 1;
     }
 
+    int opt;
     int serv_sd;
+    int clnt_sd;
+    int threads_index = 0;
+    /*pthread_t * threads;*/
+    pthread_t threads[THREAD_LIMIT];
+    /*int thread_queue[THREAD_LIMIT];*/
+
+    /*memset(thread_queue, 0, sizeof(int) * THREAD_LIMIT);*/
     
-    serv_sd = argparse(argc, argv);
+    while((opt = getopt(argc, argv, ARG_PARSER)) != -1){
+        switch(opt) {
+            case 'p':
+                serv_sd = init_serv_sock(optarg);
+                break;
+            case 'h':
+                help();
+                exit(1);
+            case ':': 
+                fprintf(stderr, "option needs a value\n");
+                exit(1);
+            case '?':  
+                fprintf(stderr, "unknown option: %c\n", optopt); 
+                break; 
+        }  
+    }
+
     if (serv_sd == -1) {
         fprintf(stderr, "error occur when initializing server socket\n");
-        return -1;
+        return 1;
     }
-    while(1) worker(serv_sd);
+
+    while (1) {
+        clnt_sd = accept_connection(serv_sd);
+        pthread_create(&threads[threads_index], NULL, worker, (void*) &clnt_sd);
+        threads_index++;
+        if (threads_index == THREAD_LIMIT) 
+            threads_index = 0;
+    }
     
     return 0;
 }

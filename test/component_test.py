@@ -28,10 +28,12 @@ def get_result(soc):
         print("RUNTIME ERROR")
     elif result == '3':
         print("TIMEOUT ERROR")
+    elif result == '4':
+        print("INCORRECT PASSWORD ERROR")
     else:
         print("UNKNOWN ERROR : ", result)
 
-def test(port):
+def test_worker(port):
     # host = '54.180.132.66'
     host = 'localhost'
     # port = 8001
@@ -60,6 +62,36 @@ int main(){
 
     mySocket.close()
 
+def test_instagrapd(port):
+    # host = '54.180.132.66'
+    host = 'localhost'
+    # port = 8001
+    mySocket = socket.socket()
+    mySocket.connect((host,port))
+
+    c_src = r'''
+#include <stdio.h>
+
+int main(){
+    int a; 
+    int b;
+    scanf("%d %d", &a, &b);
+    printf("%d", a+b);
+
+    
+    return 0;
+}
+'''
+    # test_case = r'''1 2 3 4'''
+    # send_data_chunk(mySocket, test_case)
+    mySocket.send('21400802'.encode())
+    mySocket.send('01234567'.encode())
+    send_data_chunk(mySocket, c_src)
+
+    get_result(mySocket)
+
+    mySocket.close()
+
 if __name__ == '__main__':
     import sys
-    test(int(sys.argv[1]))
+    test_instagrapd(int(sys.argv[1]))

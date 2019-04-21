@@ -6,6 +6,9 @@
 
 #define DEBUG 0
 
+#define TESTCASE_COUNT 10
+#define IDENTIFIER_SIZE 8
+#define THREAD_LIMIT 30
 #define FILE_SIZE_INDICATOR 4
 #define BUF_SIZE 128
 #define OUTPUT_BUF BUF_SIZE * 10
@@ -17,7 +20,7 @@
 #define COMPILER "/usr/bin/gcc"
 
 typedef struct {
-    int size;
+    size_t size;
     char * data;
 } data_set;
 
@@ -27,10 +30,13 @@ typedef struct {
 } sock_set;
 
 
-sock_set * init_sock(char * listen_port);
+void send_dataset(int sock, data_set * ds) ;
+int establish_connection(char * ip, char * port) ;
+data_set * readfile(char *filename) ;
+int accept_connection(int serv_sd) ;
+int init_serv_sock(char * listen_port);
 data_set * receive_data( int sock ) ;
 void save_file(const char * filename, data_set *ydata_s) ;
-int init_serv_sock(char * listen_port);
 
 int build(char * build_target) ;
 char ** execute(char * args[], char * input);
@@ -40,4 +46,5 @@ int  verify_result(char ** result) ;
 
 void error_handling(char *message) ;
 int closecmd(const pid_t pid, int *pipes);
+char** str_split(char* a_str, const char a_delim) ;
 #endif

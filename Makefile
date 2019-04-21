@@ -1,4 +1,4 @@
-override CFLAGS += -g -ggdb
+override CFLAGS += -pthread -g -ggdb
 CC = gcc
 WORKER = bin/worker
 SUBMITTER = bin/submitter

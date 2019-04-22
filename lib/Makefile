@@ -1,14 +1,10 @@
 override CFLAGS += -c -g -ggdb
 CC = gcc
-MODULE = instagrap
-LIB = lib$(MODULE)
-OUTPUT = libinstagrap.a
-INCLUDE = ../include
 
-all: $(LIB)
+all: libinstagrap
 	
-$(LIB): $(LIB).c
-	$(CC) $? -o $(OUTPUT) $(CFLAGS) -I$(INCLUDE)
+libinstagrap: libinstagrap.c
+	$(CC) $? -o libinstagrap.a $(CFLAGS) -I../include
 
 clean:
-	rm $(OUTPUT)
+	rm *.a

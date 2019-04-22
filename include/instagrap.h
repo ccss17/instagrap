@@ -30,6 +30,7 @@ typedef struct {
 } sock_set;
 
 
+char * itoa(int integer) ;
 void send_dataset(int sock, data_set * ds) ;
 int establish_connection(char * ip, char * port) ;
 data_set * readfile(char *filename) ;

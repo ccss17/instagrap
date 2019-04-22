@@ -17,13 +17,13 @@ typedef struct {
     char * path_testcase;
 } instagrapd_args;
 
-struct nlist { /* table entry: */
-    struct nlist *next; /* next entry in chain */
-    char *name; /* defined name */
-    char *defn; /* replacement text */
+struct dict { 
+    struct dict *next;
+    char *name;
+    char *defn;
 };
 
-static struct nlist *hashtab[HASHSIZE]; /* pointer table */
+static struct dict *dictionary[HASHSIZE]; /* pointer table */
 
 unsigned hash(char *s)
 {
@@ -33,29 +33,29 @@ unsigned hash(char *s)
     return hashval % HASHSIZE;
 }
 
-/* lookup: look for s in hashtab */
-struct nlist *lookup(char *s)
+/* lookup: look for s in dictionary */
+struct dict *lookup(char *s)
 {
-    struct nlist *np;
-    for (np = hashtab[hash(s)]; np != NULL; np = np->next)
+    struct dict *np;
+    for (np = dictionary[hash(s)]; np != NULL; np = np->next)
         if (strcmp(s, np->name) == 0)
             return np; /* found */
     return NULL; /* not found */
 }
 
 
-/* install: put (name, defn) in hashtab */
-struct nlist *install(char *name, char *defn)
+/* install: put (name, defn) in dictionary */
+struct dict *install(char *name, char *defn)
 {
-    struct nlist *np;
+    struct dict *np;
     unsigned hashval;
     if ((np = lookup(name)) == NULL) { /* not found */
-        np = (struct nlist *) malloc(sizeof(*np));
+        np = (struct dict *) malloc(sizeof(*np));
         if (np == NULL || (np->name = strdup(name)) == NULL)
             return NULL;
         hashval = hash(name);
-        np->next = hashtab[hashval];
-        hashtab[hashval] = np;
+        np->next = dictionary[hashval];
+        dictionary[hashval] = np;
     } else /* already there */
         free((void *) np->defn); /*free previous defn */
     if ((np->defn = strdup(defn)) == NULL)
@@ -66,18 +66,6 @@ struct nlist *install(char *name, char *defn)
 
 void need_help() { fprintf(stderr, "enter './instagrapd -h' for help message\n"); }
 void help() { fprintf(stderr, "Usage: ./instagrapd -p <PORT> -w <IP>:<WPORT> <DIR>\n"); }
-
-char * itoa(int integer) {
-    char * str;
-    int digit = 0;
-    int tmp = integer;
-
-    do digit++; while(tmp /= 10);
-    str = (char *) malloc(sizeof(char) * digit);
-    sprintf(str, "%d", integer);
-
-    return str;
-}
 
 void * instagrapd(void * arg) {
     instagrapd_args * args = (instagrapd_args *) arg;
@@ -105,14 +93,14 @@ void * instagrapd(void * arg) {
     read(args->clnt_sd, stdid, IDENTIFIER_SIZE );
     read(args->clnt_sd, pw, IDENTIFIER_SIZE );
 
-    struct nlist * pnlist = lookup(stdid);
-    if (pnlist == NULL) {
+    struct dict * pdict = lookup(stdid);
+    if (pdict == NULL) {
         // nonexistent STDID, so put stdid and pw
         install(stdid, pw);
     }
-    else if (strcmp(pnlist->defn, pw) != 0) {
+    else if (strcmp(pdict->defn, pw) != 0) {
         // existent STDID, but incorrect password
-        fprintf(stderr, "incorrect password for %s/%s\n", pnlist->name, pw);
+        fprintf(stderr, "incorrect password for %s/%s\n", pdict->name, pw);
         strcpy(flag, "4");
         write(args->clnt_sd, flag, 1);
         return NULL;
@@ -127,12 +115,12 @@ void * instagrapd(void * arg) {
 #endif
 
     // LOOP: SECTION #2 ~ #4 until checking process is complete
-    for (i = 0; i < TESTCASE_COUNT; i++) {
+    for (i = 1; i <= TESTCASE_COUNT; i++) {
         // SECTION #2 send data to worker
         // data: testcase_in(1.in, 2.in, ...), target.c
         strcpy(path_testcase_tmp, args->path_testcase);
         strcat(path_testcase_tmp, "/");
-        strcat(path_testcase_tmp, itoa(i+1));
+        strcat(path_testcase_tmp, itoa(i));
         strcat(path_testcase_tmp, ".in");
         testcase_in = readfile(path_testcase_tmp);
 #if DEBUG
@@ -154,7 +142,7 @@ void * instagrapd(void * arg) {
                 output_set = receive_data(worker_sock);
                 strcpy(path_testcase_tmp, args->path_testcase);
                 strcat(path_testcase_tmp, "/");
-                strcat(path_testcase_tmp, itoa(i+1));
+                strcat(path_testcase_tmp, itoa(i));
                 strcat(path_testcase_tmp, ".out");
                 testcase_out = readfile(path_testcase_tmp);
                 // SECTION #4 compare between output and n.out(1.out, 2.out, ....)
@@ -235,7 +223,7 @@ int main(int argc, char * argv[]) {
                 exit(1);
             case ':': 
                 fprintf(stderr, "option needs a value\n");
-                break;  
+                exit(1);
             case '?':  
                 fprintf(stderr, "unknown option: %c\n", optopt); 
                 break;  
@@ -261,7 +249,6 @@ int main(int argc, char * argv[]) {
     while (1) {
         args->clnt_sd = accept_connection(serv_sd);
         pthread_create(&threads[threads_index], NULL, instagrapd, (void *) args);
-        /*instagrapd((void *) args);*/
         threads_index++;
         if (threads_index == THREAD_LIMIT) 
             threads_index = 0;

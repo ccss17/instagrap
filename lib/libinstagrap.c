@@ -14,6 +14,18 @@ volatile int flag_child_done = 0;
 void child_handler(int sig) { flag_child_done = 1; }
 void alarm_handler(int sig) { flag_timeout = 1; }
 
+char * itoa(int integer) {
+    char * str;
+    int digit = 0;
+    int tmp = integer;
+
+    do digit++; while(tmp /= 10);
+    str = (char *) malloc(sizeof(char) * digit);
+    sprintf(str, "%d", integer);
+
+    return str;
+}
+
 int is_digit(char digit){ return digit <= '9' && digit >= '0'; }
 int is_integer(char * num) {
     int i = 0;

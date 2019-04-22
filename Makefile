@@ -21,9 +21,7 @@ instagrapd: instagrapd.c
 	$(CC) $? $(CFLAGS) -Iinclude -Llib -l$(MODULE) -o $(INSTAGRAPD) 
 
 clean:
-	rm $(WORKER)
-	rm $(SUBMITTER)
-	rm $(INSTAGRAPD)
-	rm a.out
-	rm target.c
 	make clean -C lib
+	rm bin/*
+	rm *.out
+	rm target.*

@@ -48,4 +48,5 @@ int  verify_result(char ** result) ;
 void error_handling(char *message) ;
 int closecmd(const pid_t pid, int *pipes);
 char** str_split(char* a_str, const char a_delim) ;
+int dir_exists(char * dirname) ;
 #endif

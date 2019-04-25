@@ -62,6 +62,9 @@ data_set * readfile(char *filename) {
     char *buf = NULL;
     int filesize, read_size;
     FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        return NULL;
+    }
     data_set * file_data;
 
     file_data = (data_set *) malloc(sizeof(data_set));
@@ -206,6 +209,7 @@ void save_file(const char * filename, data_set *data_s) {
 //
 // FORK CHILD PROCESS 
 //
+
 
 int exists(char * fname) {
     if ( access( fname, F_OK) != -1 ) return 1;

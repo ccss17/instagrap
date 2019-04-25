@@ -1,11 +1,7 @@
 target.c
 bin/
-*.in
 .vscode
-*.out
 *.a
 *.o
-maketest/
-forktest/
 test*
-!test/
+!testcase/

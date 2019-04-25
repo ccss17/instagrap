@@ -69,6 +69,8 @@ void help() { fprintf(stderr, "Usage: ./instagrapd -p <PORT> -w <IP>:<WPORT> <DI
 
 void * instagrapd(void * arg) {
     instagrapd_args * args = (instagrapd_args *) arg;
+
+
     char * buf;
     data_set * targetc;
     char stdid[IDENTIFIER_SIZE+1] = {'\0', };
@@ -245,6 +247,12 @@ int main(int argc, char * argv[]) {
     }
 
     args->path_testcase = argv[optind];
+
+    if (exists(args->path_testcase) == 0) {
+        fprintf(stderr, "testcase path (%s) is invalid!\n", args->path_testcase);
+        close(serv_sd);
+        return NULL;
+    }
 
     while (1) {
         args->clnt_sd = accept_connection(serv_sd);

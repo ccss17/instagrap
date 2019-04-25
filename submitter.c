@@ -32,11 +32,16 @@ void * submitter(void * arg) {
     printf("%s\n", args->path_targetc);
 #endif
 
+    targetc = readfile(args->path_targetc);
+    if (targetc == NULL) {
+        fprintf(stderr, "%s is invalid file path!", args->path_targetc);
+        return;
+    }
+
     instagrapd_sock = establish_connection(args->instagrapd_ip, args->instagrapd_port);
     write(instagrapd_sock, args->stdid, strlen(args->stdid));
     write(instagrapd_sock, args->pw, strlen(args->pw));
 
-    targetc = readfile(args->path_targetc);
     send_dataset(instagrapd_sock, targetc);
 
     flag = (char *)malloc(sizeof(char) * 3);

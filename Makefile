@@ -6,7 +6,10 @@ INSTAGRAPD = bin/instagrapd
 MODULE = instagrap
 LIB = lib$(MODULE)
 
-all: lib/$(LIB).a worker submitter instagrapd
+all: output lib/$(LIB).a worker submitter instagrapd
+
+output: 
+	if ! test -d bin; then mkdir bin; fi
 
 lib/$(LIB).a: lib/$(LIB).c
 	make -C lib
@@ -22,6 +25,4 @@ instagrapd: instagrapd.c
 
 clean:
 	make clean -C lib
-	rm bin/*
-	rm *.out
-	rm target.*
+	if test -d bin; then rm bin/*; fi

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
 #define TESTCASE_COUNT 10
 #define IDENTIFIER_SIZE 8
@@ -15,7 +15,6 @@
 #define PIPE_COUNT 4
 #define TIMEOUT 3
 
-#define TARGET_FILE "target.c"
 #define DEFAULT_OUTPUT_FILE "./a.out"
 #define COMPILER "/usr/bin/gcc"
 
@@ -37,7 +36,8 @@ data_set * readfile(char *filename) ;
 int accept_connection(int serv_sd) ;
 int init_serv_sock(char * listen_port);
 data_set * receive_data( int sock ) ;
-void save_file(const char * filename, data_set *ydata_s) ;
+//void save_file(char * filename, data_set *ydata_s) ;
+int save_file(char * filename, data_set *data_s) ;
 
 int build(char * build_target) ;
 char ** execute(char * args[], char * input);
@@ -49,4 +49,6 @@ void error_handling(char *message) ;
 int closecmd(const pid_t pid, int *pipes);
 char** str_split(char* a_str, const char a_delim) ;
 int dir_exists(char * dirname) ;
+int exists(char * fname) ;
+void rand_string(char *str, size_t size) ;
 #endif

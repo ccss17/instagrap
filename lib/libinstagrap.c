@@ -193,17 +193,22 @@ data_set * receive_data( int sock ) {
 }
 
 
-void save_file(const char * filename, data_set *data_s) {
-    FILE * fp;
-
+int save_file(char * filename, data_set *data_s) {
 #if DEBUG
     printf("saved filename:%s\n", filename);
     printf("saved data:%s\n", data_s->data);
 #endif
 
+    FILE * fp;
     fp = fopen(filename, "wb");
+    if (fp == NULL) {
+        return 1;
+    }
     fwrite((void*)data_s->data, sizeof(char), data_s->size, fp);
+    puts("*");
     fclose(fp);
+    puts("*");
+    return 0;
 }
 
 //
@@ -444,4 +449,14 @@ char** str_split(char* a_str, const char a_delim) {
     }
 
     return result;
+}
+
+void rand_string(char *str, size_t size) {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    srand(time(NULL));
+    for (size_t n = 0; n < size; n++) {
+        int key = rand() % (int) (sizeof charset - 1);
+        str[n] = charset[key];
+    }
 }

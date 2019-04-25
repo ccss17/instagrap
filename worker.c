@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,6 +9,7 @@
 #include "instagrap.h"
 
 const char * ARG_PARSER = ":p:h";
+static const char TARGET_FILE[] = "target.c";
 
 void need_help() { fprintf(stderr, "enter './worker -h' for help message\n"); }
 void help() { fprintf(stderr, "Usage: ./worker -p <PORT> \n"); }
@@ -16,6 +18,8 @@ void * worker(void * pclnt_sd) {
     int clnt_sd;
     char ** result;
     char * feedback;
+    char rand_str[8];
+    char TARGET_FILE[30];
     data_set * testcase;
     data_set * targetc;
 
@@ -27,6 +31,7 @@ void * worker(void * pclnt_sd) {
     feedback = (char *)malloc(sizeof(char));
     testcase = receive_data(clnt_sd);
     targetc = receive_data(clnt_sd);
+
     save_file(TARGET_FILE, targetc);
 #if DEBUG
     printf("testcase.in:%s\n", testcase->data);
@@ -76,6 +81,7 @@ void * worker(void * pclnt_sd) {
     }
 
 #if ! DEBUG
+    /*free(rand_str);*/
     remove(TARGET_FILE);
 #endif
     /*free(feedback);*/

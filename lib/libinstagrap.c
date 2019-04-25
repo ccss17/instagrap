@@ -205,9 +205,10 @@ int save_file(char * filename, data_set *data_s) {
         return 1;
     }
     fwrite((void*)data_s->data, sizeof(char), data_s->size, fp);
-    puts("*");
     fclose(fp);
-    puts("*");
+    if (exists(filename)) {
+        return 2;
+    }
     return 0;
 }
 
@@ -230,13 +231,12 @@ int build(char * build_target) {
     */
     int flag; // 0 : PROGRAM NORMALLY EXIT, -1 : PROGRAM ERROR, -2 : TIMEOUT ERROR
     char ** result;
-    char * feedback;
     char * CMD_BUILD[] = {
         COMPILER, build_target, 
-        "-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", NULL
+        /*"-O2", "-lm", "-static", "-DONLINE_JUDGE", "-DBOJ", */
+        NULL
     };
 
-    feedback = (char *) malloc(sizeof(char));
     execute(CMD_BUILD, NULL);
 
     if (exists(DEFAULT_OUTPUT_FILE)){
@@ -449,14 +449,4 @@ char** str_split(char* a_str, const char a_delim) {
     }
 
     return result;
-}
-
-void rand_string(char *str, size_t size) {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-    srand(time(NULL));
-    for (size_t n = 0; n < size; n++) {
-        int key = rand() % (int) (sizeof charset - 1);
-        str[n] = charset[key];
-    }
 }

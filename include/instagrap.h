@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define TESTCASE_COUNT 10
 #define IDENTIFIER_SIZE 8
@@ -50,5 +50,4 @@ int closecmd(const pid_t pid, int *pipes);
 char** str_split(char* a_str, const char a_delim) ;
 int dir_exists(char * dirname) ;
 int exists(char * fname) ;
-void rand_string(char *str, size_t size) ;
 #endif

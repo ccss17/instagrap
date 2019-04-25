@@ -19,9 +19,9 @@ void * worker(void * pclnt_sd) {
     char ** result;
     char * feedback;
     char rand_str[8];
-    char TARGET_FILE[30];
     data_set * testcase;
     data_set * targetc;
+    int tmp;
 
     clnt_sd = * (int *)pclnt_sd;
 #if DEBUG
@@ -32,7 +32,18 @@ void * worker(void * pclnt_sd) {
     testcase = receive_data(clnt_sd);
     targetc = receive_data(clnt_sd);
 
-    save_file(TARGET_FILE, targetc);
+    tmp = save_file(TARGET_FILE, targetc) == 1; 
+    if (tmp == 1) {
+        fprintf(stderr, "file open failed");
+        shutdown(clnt_sd, SHUT_WR); 
+        close(clnt_sd);
+        return;
+    } else if (tmp == 2){
+        fprintf(stderr, "save failed");
+        shutdown(clnt_sd, SHUT_WR); 
+        close(clnt_sd);
+        return;
+    }
 #if DEBUG
     printf("testcase.in:%s\n", testcase->data);
     printf("testcase.in length:%ld\n", strlen(testcase->data));

@@ -3,6 +3,7 @@ bin/
 .vscode
 *.a
 *.o
-test*
 !testcase/
+test*
 core
+!test/

@@ -54,16 +54,16 @@ void * submitter(void * arg) {
             printf("result:%s/%ld\n", flag, strlen(flag));
             break;
         case '1':
-            printf("BUILD FAILED");
+            printf("BUILD FAILED\n");
             break;
         case '2':
-            printf("RUNTIME ERROR");
+            printf("RUNTIME ERROR\n");
             break;
         case '3':
-            printf("TIMEOUT ERROR");
+            printf("TIMEOUT ERROR\n");
             break;
         case '4':
-            printf("INCORRECT PASSWORD ERROR");
+            printf("INCORRECT PASSWORD ERROR\n");
             break;
         default:
             printf("UNKNOWN ERROR:%s\n", flag);
